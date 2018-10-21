@@ -751,13 +751,13 @@ ice_sched_add_nodes_to_layer(struct ice_port_info *pi,
 	u16 num_added = 0;
 	u32 temp;
 
+	*num_nodes_added = 0;
+
 	if (!num_nodes)
 		return status;
 
 	if (!parent || layer < hw->sw_entry_point_layer)
 		return ICE_ERR_PARAM;
-
-	*num_nodes_added = 0;
 
 	/* max children per node per layer */
 	max_child_nodes =
@@ -1576,8 +1576,7 @@ ice_sched_update_vsi_child_nodes(struct ice_port_info *pi, u16 vsi_id, u8 tc,
 			return status;
 	}
 
-	if (owner == ICE_SCHED_NODE_OWNER_LAN)
-		vsi->max_lanq[tc] = new_numqs;
+	vsi->max_lanq[tc] = new_numqs;
 
 	return status;
 }

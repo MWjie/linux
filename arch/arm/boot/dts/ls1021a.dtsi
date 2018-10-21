@@ -84,6 +84,7 @@
 			device_type = "cpu";
 			reg = <0xf01>;
 			clocks = <&clockgen 1 0>;
+			#cooling-cells = <2>;
 		};
 	};
 
@@ -587,7 +588,8 @@
 			device_type = "mdio";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0x0 0x2d24000 0x0 0x4000>;
+			reg = <0x0 0x2d24000 0x0 0x4000>,
+			      <0x0 0x2d10030 0x0 0x4>;
 		};
 
 		ptp_clock@2d10e00 {

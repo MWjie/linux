@@ -34,6 +34,9 @@
 #if IS_ENABLED(CONFIG_PSTORE_LZ4_COMPRESS) || IS_ENABLED(CONFIG_PSTORE_LZ4HC_COMPRESS)
 #include <linux/lz4.h>
 #endif
+#if IS_ENABLED(CONFIG_PSTORE_ZSTD_COMPRESS)
+#include <linux/zstd.h>
+#endif
 #include <linux/crypto.h>
 #include <linux/string.h>
 #include <linux/timer.h>
@@ -192,6 +195,13 @@ static int zbufsize_842(size_t size)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_PSTORE_ZSTD_COMPRESS)
+static int zbufsize_zstd(size_t size)
+{
+	return ZSTD_compressBound(size);
+}
+#endif
+
 static const struct pstore_zbackend *zbackend __ro_after_init;
 
 static const struct pstore_zbackend zbackends[] = {
@@ -223,6 +233,12 @@ static const struct pstore_zbackend zbackends[] = {
 	{
 		.zbufsize	= zbufsize_842,
 		.name		= "842",
+	},
+#endif
+#if IS_ENABLED(CONFIG_PSTORE_ZSTD_COMPRESS)
+	{
+		.zbufsize	= zbufsize_zstd,
+		.name		= "zstd",
 	},
 #endif
 	{ }
@@ -258,7 +274,7 @@ static int pstore_decompress(void *in, void *out,
 
 static void allocate_buf_for_compression(void)
 {
-	if (!zbackend)
+	if (!IS_ENABLED(CONFIG_PSTORE_COMPRESS) || !zbackend)
 		return;
 
 	if (!crypto_has_comp(zbackend->name, 0, 0)) {
@@ -287,7 +303,7 @@ static void allocate_buf_for_compression(void)
 
 static void free_buf_for_compression(void)
 {
-	if (!IS_ERR_OR_NULL(tfm))
+	if (IS_ENABLED(CONFIG_PSTORE_COMPRESS) && !IS_ERR_OR_NULL(tfm))
 		crypto_free_comp(tfm);
 	kfree(big_oops_buf);
 	big_oops_buf = NULL;
@@ -328,7 +344,7 @@ void pstore_record_init(struct pstore_record *record,
 	record->psi = psinfo;
 
 	/* Report zeroed timestamp if called before timekeeping has resumed. */
-	record->time = ns_to_timespec(ktime_get_real_fast_ns());
+	record->time = ns_to_timespec64(ktime_get_real_fast_ns());
 }
 
 /*

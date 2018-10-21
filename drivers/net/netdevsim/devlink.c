@@ -30,51 +30,35 @@ static struct net *nsim_devlink_net(struct devlink *devlink)
 
 /* IPv4
  */
-static u64 nsim_ipv4_fib_resource_occ_get(struct devlink *devlink)
+static u64 nsim_ipv4_fib_resource_occ_get(void *priv)
 {
-	struct net *net = nsim_devlink_net(devlink);
+	struct net *net = priv;
 
 	return nsim_fib_get_val(net, NSIM_RESOURCE_IPV4_FIB, false);
 }
 
-static struct devlink_resource_ops nsim_ipv4_fib_res_ops = {
-	.occ_get = nsim_ipv4_fib_resource_occ_get,
-};
-
-static u64 nsim_ipv4_fib_rules_res_occ_get(struct devlink *devlink)
+static u64 nsim_ipv4_fib_rules_res_occ_get(void *priv)
 {
-	struct net *net = nsim_devlink_net(devlink);
+	struct net *net = priv;
 
 	return nsim_fib_get_val(net, NSIM_RESOURCE_IPV4_FIB_RULES, false);
 }
 
-static struct devlink_resource_ops nsim_ipv4_fib_rules_res_ops = {
-	.occ_get = nsim_ipv4_fib_rules_res_occ_get,
-};
-
 /* IPv6
  */
-static u64 nsim_ipv6_fib_resource_occ_get(struct devlink *devlink)
+static u64 nsim_ipv6_fib_resource_occ_get(void *priv)
 {
-	struct net *net = nsim_devlink_net(devlink);
+	struct net *net = priv;
 
 	return nsim_fib_get_val(net, NSIM_RESOURCE_IPV6_FIB, false);
 }
 
-static struct devlink_resource_ops nsim_ipv6_fib_res_ops = {
-	.occ_get = nsim_ipv6_fib_resource_occ_get,
-};
-
-static u64 nsim_ipv6_fib_rules_res_occ_get(struct devlink *devlink)
+static u64 nsim_ipv6_fib_rules_res_occ_get(void *priv)
 {
-	struct net *net = nsim_devlink_net(devlink);
+	struct net *net = priv;
 
 	return nsim_fib_get_val(net, NSIM_RESOURCE_IPV6_FIB_RULES, false);
 }
-
-static struct devlink_resource_ops nsim_ipv6_fib_rules_res_ops = {
-	.occ_get = nsim_ipv6_fib_rules_res_occ_get,
-};
 
 static int devlink_resources_register(struct devlink *devlink)
 {
@@ -91,7 +75,7 @@ static int devlink_resources_register(struct devlink *devlink)
 	err = devlink_resource_register(devlink, "IPv4", (u64)-1,
 					NSIM_RESOURCE_IPV4,
 					DEVLINK_RESOURCE_ID_PARENT_TOP,
-					&params, NULL);
+					&params);
 	if (err) {
 		pr_err("Failed to register IPv4 top resource\n");
 		goto out;
@@ -100,8 +84,7 @@ static int devlink_resources_register(struct devlink *devlink)
 	n = nsim_fib_get_val(net, NSIM_RESOURCE_IPV4_FIB, true);
 	err = devlink_resource_register(devlink, "fib", n,
 					NSIM_RESOURCE_IPV4_FIB,
-					NSIM_RESOURCE_IPV4,
-					&params, &nsim_ipv4_fib_res_ops);
+					NSIM_RESOURCE_IPV4, &params);
 	if (err) {
 		pr_err("Failed to register IPv4 FIB resource\n");
 		return err;
@@ -110,8 +93,7 @@ static int devlink_resources_register(struct devlink *devlink)
 	n = nsim_fib_get_val(net, NSIM_RESOURCE_IPV4_FIB_RULES, true);
 	err = devlink_resource_register(devlink, "fib-rules", n,
 					NSIM_RESOURCE_IPV4_FIB_RULES,
-					NSIM_RESOURCE_IPV4,
-					&params, &nsim_ipv4_fib_rules_res_ops);
+					NSIM_RESOURCE_IPV4, &params);
 	if (err) {
 		pr_err("Failed to register IPv4 FIB rules resource\n");
 		return err;
@@ -121,7 +103,7 @@ static int devlink_resources_register(struct devlink *devlink)
 	err = devlink_resource_register(devlink, "IPv6", (u64)-1,
 					NSIM_RESOURCE_IPV6,
 					DEVLINK_RESOURCE_ID_PARENT_TOP,
-					&params, NULL);
+					&params);
 	if (err) {
 		pr_err("Failed to register IPv6 top resource\n");
 		goto out;
@@ -130,8 +112,7 @@ static int devlink_resources_register(struct devlink *devlink)
 	n = nsim_fib_get_val(net, NSIM_RESOURCE_IPV6_FIB, true);
 	err = devlink_resource_register(devlink, "fib", n,
 					NSIM_RESOURCE_IPV6_FIB,
-					NSIM_RESOURCE_IPV6,
-					&params, &nsim_ipv6_fib_res_ops);
+					NSIM_RESOURCE_IPV6, &params);
 	if (err) {
 		pr_err("Failed to register IPv6 FIB resource\n");
 		return err;
@@ -140,17 +121,34 @@ static int devlink_resources_register(struct devlink *devlink)
 	n = nsim_fib_get_val(net, NSIM_RESOURCE_IPV6_FIB_RULES, true);
 	err = devlink_resource_register(devlink, "fib-rules", n,
 					NSIM_RESOURCE_IPV6_FIB_RULES,
-					NSIM_RESOURCE_IPV6,
-					&params, &nsim_ipv6_fib_rules_res_ops);
+					NSIM_RESOURCE_IPV6, &params);
 	if (err) {
 		pr_err("Failed to register IPv6 FIB rules resource\n");
 		return err;
 	}
+
+	devlink_resource_occ_get_register(devlink,
+					  NSIM_RESOURCE_IPV4_FIB,
+					  nsim_ipv4_fib_resource_occ_get,
+					  net);
+	devlink_resource_occ_get_register(devlink,
+					  NSIM_RESOURCE_IPV4_FIB_RULES,
+					  nsim_ipv4_fib_rules_res_occ_get,
+					  net);
+	devlink_resource_occ_get_register(devlink,
+					  NSIM_RESOURCE_IPV6_FIB,
+					  nsim_ipv6_fib_resource_occ_get,
+					  net);
+	devlink_resource_occ_get_register(devlink,
+					  NSIM_RESOURCE_IPV6_FIB_RULES,
+					  nsim_ipv6_fib_rules_res_occ_get,
+					  net);
 out:
 	return err;
 }
 
-static int nsim_devlink_reload(struct devlink *devlink)
+static int nsim_devlink_reload(struct devlink *devlink,
+			       struct netlink_ext_ack *extack)
 {
 	enum nsim_resource_id res_ids[] = {
 		NSIM_RESOURCE_IPV4_FIB, NSIM_RESOURCE_IPV4_FIB_RULES,
@@ -165,7 +163,7 @@ static int nsim_devlink_reload(struct devlink *devlink)
 
 		err = devlink_resource_size_get(devlink, res_ids[i], &val);
 		if (!err) {
-			err = nsim_fib_set_max(net, res_ids[i], val);
+			err = nsim_fib_set_max(net, res_ids[i], val, extack);
 			if (err)
 				return err;
 		}
@@ -183,7 +181,7 @@ static void nsim_devlink_net_reset(struct net *net)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(res_ids); ++i) {
-		if (nsim_fib_set_max(net, res_ids[i], (u64)-1)) {
+		if (nsim_fib_set_max(net, res_ids[i], (u64)-1, NULL)) {
 			pr_err("Failed to reset limit for resource %u\n",
 			       res_ids[i]);
 		}
@@ -209,6 +207,7 @@ void nsim_devlink_teardown(struct netdevsim *ns)
 		struct net *net = nsim_to_net(ns);
 		bool *reg_devlink = net_generic(net, nsim_devlink_id);
 
+		devlink_resources_unregister(ns->devlink, NULL);
 		devlink_unregister(ns->devlink);
 		devlink_free(ns->devlink);
 		ns->devlink = NULL;

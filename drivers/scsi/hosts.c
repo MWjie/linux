@@ -472,7 +472,6 @@ struct Scsi_Host *scsi_host_alloc(struct scsi_host_template *sht, int privsize)
 	else
 		shost->dma_boundary = 0xffffffff;
 
-	shost->use_blk_mq = scsi_use_blk_mq;
 	shost->use_blk_mq = scsi_use_blk_mq || shost->hostt->force_blk_mq;
 
 	device_initialize(&shost->shost_gendev);
@@ -563,6 +562,16 @@ struct Scsi_Host *scsi_host_get(struct Scsi_Host *shost)
 	return shost;
 }
 EXPORT_SYMBOL(scsi_host_get);
+
+/**
+ * scsi_host_busy - Return the host busy counter
+ * @shost:	Pointer to Scsi_Host to inc.
+ **/
+int scsi_host_busy(struct Scsi_Host *shost)
+{
+	return atomic_read(&shost->host_busy);
+}
+EXPORT_SYMBOL(scsi_host_busy);
 
 /**
  * scsi_host_put - dec a Scsi_Host ref count

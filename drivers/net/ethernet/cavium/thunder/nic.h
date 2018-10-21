@@ -265,14 +265,9 @@ struct nicvf_drv_stats {
 
 struct cavium_ptp;
 
-struct xcast_addr {
-	struct list_head list;
-	u64              addr;
-};
-
 struct xcast_addr_list {
-	struct list_head list;
 	int              count;
+	u64              mc[];
 };
 
 struct nicvf_work {
@@ -330,6 +325,8 @@ struct nicvf {
 	struct tasklet_struct	qs_err_task;
 	struct work_struct	reset_task;
 	struct nicvf_work       rx_mode_work;
+	/* spinlock to protect workqueue arguments from concurrent access */
+	spinlock_t              rx_mode_wq_lock;
 
 	/* PTP timestamp */
 	struct cavium_ptp	*ptp_clock;

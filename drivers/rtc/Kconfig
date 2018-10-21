@@ -244,15 +244,6 @@ config RTC_DRV_DS1307
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-ds1307.
 
-config RTC_DRV_DS1307_HWMON
-	bool "HWMON support for rtc-ds1307"
-	depends on RTC_DRV_DS1307 && HWMON
-	depends on !(RTC_DRV_DS1307=y && HWMON=m)
-	default y
-	help
-	  Say Y here if you want to expose temperature sensor data on
-	  rtc-ds1307 (only DS3231)
-
 config RTC_DRV_DS1307_CENTURY
 	bool "Century bit support for rtc-ds1307"
 	depends on RTC_DRV_DS1307
@@ -406,6 +397,16 @@ config RTC_DRV_ISL12022
 
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-isl12022.
+
+config RTC_DRV_ISL12026
+	tristate "Intersil ISL12026"
+	depends on OF || COMPILE_TEST
+	help
+	  If you say yes here you get support for the
+	  Intersil ISL12026 RTC chip.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-isl12026.
 
 config RTC_DRV_X1205
 	tristate "Xicor/Intersil X1205"
@@ -1017,18 +1018,6 @@ config RTC_DS1685_PROC_REGS
 
 	  Unless you are debugging this driver, choose N.
 
-config RTC_DS1685_SYSFS_REGS
-	bool "SysFS access to RTC register bits"
-	depends on RTC_DRV_DS1685_FAMILY && SYSFS
-	help
-	  Enable this to provide access to the RTC control register bits
-	  in /sys.  Some of the bits are read-write, others are read-only.
-
-	  Keep in mind that reading Control C's bits automatically clears
-	  all pending IRQ flags - this can cause lost interrupts.
-
-	  If you know that you need access to these bits, choose Y, Else N.
-
 config RTC_DRV_DS1742
 	tristate "Maxim/Dallas DS1742/1743"
 	depends on HAS_IOMEM
@@ -1413,6 +1402,7 @@ config RTC_DRV_AT91RM9200
 config RTC_DRV_AT91SAM9
 	tristate "AT91SAM9 RTT as RTC"
 	depends on ARCH_AT91 || COMPILE_TEST
+	depends on HAS_IOMEM
 	select MFD_SYSCON
 	help
 	  Some AT91SAM9 SoCs provide an RTT (Real Time Timer) block which
@@ -1502,7 +1492,7 @@ config RTC_DRV_STARFIRE
 
 config RTC_DRV_TX4939
 	tristate "TX4939 SoC"
-	depends on SOC_TX4939
+	depends on SOC_TX4939 || COMPILE_TEST
 	help
 	  Driver for the internal RTC (Realtime Clock) module found on
 	  Toshiba TX4939 SoC.
@@ -1602,7 +1592,7 @@ config RTC_DRV_JZ4740
 	  If you say yes here you get support for the Ingenic JZ47xx SoCs RTC
 	  controllers.
 
-	  This driver can also be buillt as a module. If so, the module
+	  This driver can also be built as a module. If so, the module
 	  will be called rtc-jz4740.
 
 config RTC_DRV_LPC24XX

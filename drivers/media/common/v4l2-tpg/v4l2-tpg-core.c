@@ -119,12 +119,14 @@ int tpg_alloc(struct tpg_data *tpg, unsigned max_w)
 		for (plane = 0; plane < TPG_MAX_PLANES; plane++) {
 			unsigned pixelsz = plane ? 2 : 4;
 
-			tpg->lines[pat][plane] = vzalloc(max_w * 2 * pixelsz);
+			tpg->lines[pat][plane] =
+				vzalloc(array3_size(max_w, 2, pixelsz));
 			if (!tpg->lines[pat][plane])
 				return -ENOMEM;
 			if (plane == 0)
 				continue;
-			tpg->downsampled_lines[pat][plane] = vzalloc(max_w * 2 * pixelsz);
+			tpg->downsampled_lines[pat][plane] =
+				vzalloc(array3_size(max_w, 2, pixelsz));
 			if (!tpg->downsampled_lines[pat][plane])
 				return -ENOMEM;
 		}
@@ -132,13 +134,16 @@ int tpg_alloc(struct tpg_data *tpg, unsigned max_w)
 	for (plane = 0; plane < TPG_MAX_PLANES; plane++) {
 		unsigned pixelsz = plane ? 2 : 4;
 
-		tpg->contrast_line[plane] = vzalloc(max_w * pixelsz);
+		tpg->contrast_line[plane] =
+			vzalloc(array_size(pixelsz, max_w));
 		if (!tpg->contrast_line[plane])
 			return -ENOMEM;
-		tpg->black_line[plane] = vzalloc(max_w * pixelsz);
+		tpg->black_line[plane] =
+			vzalloc(array_size(pixelsz, max_w));
 		if (!tpg->black_line[plane])
 			return -ENOMEM;
-		tpg->random_line[plane] = vzalloc(max_w * 2 * pixelsz);
+		tpg->random_line[plane] =
+			vzalloc(array3_size(max_w, 2, pixelsz));
 		if (!tpg->random_line[plane])
 			return -ENOMEM;
 	}
@@ -1149,7 +1154,7 @@ static void gen_twopix(struct tpg_data *tpg,
 	case V4L2_PIX_FMT_NV42:
 		buf[0][offset] = r_y_h;
 		buf[1][2 * offset] = b_v;
-		buf[1][(2 * offset + 1) %8] = g_u_s;
+		buf[1][(2 * offset + 1) % 8] = g_u_s;
 		break;
 
 	case V4L2_PIX_FMT_YUYV:

@@ -45,6 +45,9 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 /**
  * ice_clear_pf_cfg - Clear PF configuration
  * @hw: pointer to the hardware structure
+ *
+ * Clears any existing PF configuration (VSIs, VSI lists, switch rules, port
+ * configuration, flow director filters, etc.).
  */
 enum ice_status ice_clear_pf_cfg(struct ice_hw *hw)
 {
@@ -78,6 +81,7 @@ ice_aq_manage_mac_read(struct ice_hw *hw, void *buf, u16 buf_size,
 	struct ice_aq_desc desc;
 	enum ice_status status;
 	u16 flags;
+	u8 i;
 
 	cmd = &desc.params.mac_read;
 
@@ -98,8 +102,16 @@ ice_aq_manage_mac_read(struct ice_hw *hw, void *buf, u16 buf_size,
 		return ICE_ERR_CFG;
 	}
 
-	ether_addr_copy(hw->port_info->mac.lan_addr, resp->mac_addr);
-	ether_addr_copy(hw->port_info->mac.perm_addr, resp->mac_addr);
+	/* A single port can report up to two (LAN and WoL) addresses */
+	for (i = 0; i < cmd->num_addr; i++)
+		if (resp[i].addr_type == ICE_AQC_MAN_MAC_ADDR_TYPE_LAN) {
+			ether_addr_copy(hw->port_info->mac.lan_addr,
+					resp[i].mac_addr);
+			ether_addr_copy(hw->port_info->mac.perm_addr,
+					resp[i].mac_addr);
+			break;
+		}
+
 	return 0;
 }
 
@@ -464,12 +476,17 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	if (status)
 		goto err_unroll_sched;
 
-	/* Get port MAC information */
-	mac_buf_len = sizeof(struct ice_aqc_manage_mac_read_resp);
-	mac_buf = devm_kzalloc(ice_hw_to_dev(hw), mac_buf_len, GFP_KERNEL);
+	/* Get MAC information */
+	/* A single port can report up to two (LAN and WoL) addresses */
+	mac_buf = devm_kcalloc(ice_hw_to_dev(hw), 2,
+			       sizeof(struct ice_aqc_manage_mac_read_resp),
+			       GFP_KERNEL);
+	mac_buf_len = 2 * sizeof(struct ice_aqc_manage_mac_read_resp);
 
-	if (!mac_buf)
+	if (!mac_buf) {
+		status = ICE_ERR_NO_MEMORY;
 		goto err_unroll_fltr_mgmt_struct;
+	}
 
 	status = ice_aq_manage_mac_read(hw, mac_buf, mac_buf_len, NULL);
 	devm_kfree(ice_hw_to_dev(hw), mac_buf);
@@ -1469,7 +1486,7 @@ enum ice_status ice_get_link_status(struct ice_port_info *pi, bool *link_up)
 	struct ice_phy_info *phy_info;
 	enum ice_status status = 0;
 
-	if (!pi)
+	if (!pi || !link_up)
 		return ICE_ERR_PARAM;
 
 	phy_info = &pi->phy;
@@ -1605,20 +1622,23 @@ __ice_aq_get_set_rss_lut(struct ice_hw *hw, u16 vsi_id, u8 lut_type, u8 *lut,
 	}
 
 	/* LUT size is only valid for Global and PF table types */
-	if (lut_size == ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_128) {
-		flags |= (ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_128_FLAG <<
-			  ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S) &
-			 ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_M;
-	} else if (lut_size == ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_512) {
+	switch (lut_size) {
+	case ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_128:
+		break;
+	case ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_512:
 		flags |= (ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_512_FLAG <<
 			  ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S) &
 			 ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_M;
-	} else if ((lut_size == ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_2K) &&
-		   (lut_type == ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF)) {
-		flags |= (ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_2K_FLAG <<
-			  ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S) &
-			 ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_M;
-	} else {
+		break;
+	case ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_2K:
+		if (lut_type == ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF) {
+			flags |= (ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_2K_FLAG <<
+				  ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S) &
+				 ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_M;
+			break;
+		}
+		/* fall-through */
+	default:
 		status = ICE_ERR_PARAM;
 		goto ice_aq_get_set_rss_lut_exit;
 	}
